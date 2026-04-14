@@ -1,65 +1,80 @@
+// ==========================================
+// --- 0. DYNAMIC PATH CALCULATION ---
+// ==========================================
+// Check if we are currently inside the 'pages' directory
+const isInPagesFolder = window.location.pathname.includes('/pages/');
+const LOGIN_PAGE_URL = isInPagesFolder ? 'login.html' : 'pages/login.html';
+
 const API_URL = 'http://localhost:3000/api';
 
-// --- AUTHENTICATION CHECK ---
-// 1. Grab the token and user data we saved during login
+// ==========================================
+// --- 1. AUTHENTICATION & SECURITY CHECK ---
+// ==========================================
 const token = localStorage.getItem('ledger_token');
 const userString = localStorage.getItem('ledger_user');
 
-// 2. If they don't exist, the user isn't logged in. Kick them to the login page.
+let currentUser = null;
+let CURRENT_USER_ID = null;
+
+// If no token exists, kick the user out to the login page immediately
 if (!token || !userString) {
-    window.location.href = 'login.html';
+    window.location.replace(LOGIN_PAGE_URL); 
+} else {
+    // Parse the real user data from the database
+    currentUser = JSON.parse(userString);
+    CURRENT_USER_ID = currentUser.id; // <-- The Magic Line!
 }
 
-// 3. If they are logged in, parse their real user data
-const currentUser = JSON.parse(userString);
-const CURRENT_USER_ID = currentUser.id; // <-- This replaces the hardcoded ID!
+// ==========================================
+// --- 2. GLOBAL LOGOUT FUNCTION ---
+// ==========================================
+function logoutUser(event) {
+    if (event) event.preventDefault();
+    localStorage.removeItem('ledger_token');
+    localStorage.removeItem('ledger_user');
+    window.location.replace(LOGIN_PAGE_URL);
+}
 
+// ==========================================
+// --- 3. INITIALIZATION ON LOAD ---
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Only proceed with DOM manipulation if we are authenticated
+    if (!currentUser) return; 
+
+    // --- UI PERSONALIZATION ---
+    // Find the elements that say "Architect Prime" and replace with real username
+    const profileNames = document.querySelectorAll('.text-sm.font-bold.text-on-surface');
+    profileNames.forEach(nameEl => {
+        if (nameEl.innerText === 'Architect Prime') {
+            nameEl.innerText = currentUser.username;
+        }
+    });
+
+    // Wire up all "Sign Out" buttons dynamically
+    const logoutLinks = document.querySelectorAll('a:has(.material-symbols-outlined)');
+    logoutLinks.forEach(link => {
+        if (link.innerText.includes('Sign Out')) {
+            link.addEventListener('click', logoutUser);
+        }
+    });
+
+    // --- INITIALIZE DATA ---
     loadCategories();
     setupFormHandler();
-    // Load transactions immediately if the list container exists on the current page
+    
+    // Load transactions only if the list container exists on the current page
     if (document.getElementById('transaction-list')) {
         loadTransactions();
     }
 });
 
-// pages/app.js
 
-const DUMMY_USER_ID = 1; // Match the ID from your database
-const API_BASE_URL = 'http://localhost:3000/api';
+// ==========================================
+// --- 4. API & DATA FUNCTIONS ---
+// ==========================================
 
-// Example: Function to record a transaction
-async function recordTransaction(event) {
-    event.preventDefault();
-
-    const transactionData = {
-        user_id: DUMMY_USER_ID, // Use the dummy ID here
-        category_id: document.getElementById('tx-category').value,
-        transaction_type: 'expense', // Hardcoded for now
-        name: document.getElementById('tx-name').value,
-        amount: document.getElementById('tx-amount').value,
-        transaction_date: new Date().toISOString().split('T')[0], // Today's date
-        description: document.getElementById('tx-desc').value
-    };
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/transactions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(transactionData)
-        });
-        
-        const result = await response.json();
-        alert(result.message);
-    } catch (err) {
-        console.error("Failed to record:", err);
-    }
-}
-
-// Attach to the button
-document.getElementById('btn-record').addEventListener('click', recordTransaction);
-
-// 1. Fetch categories from your MySQL database
+// Fetch categories from your MySQL database
 async function loadCategories() {
     try {
         const response = await fetch(`${API_URL}/categories`);
@@ -87,43 +102,50 @@ async function loadCategories() {
     }
 }
 
-// 2. Handle the "Record Transaction" button
+// Handle the "Record Transaction" Form Submission
 function setupFormHandler() {
     const form = document.getElementById('entry-form');
-    if (!form) return; // Guard clause if form doesn't exist on the page
+    if (!form) return; 
     
     form.addEventListener('submit', async (e) => {
-        e.preventDefault(); 
+        e.preventDefault(); // Stop the page from reloading!
         
-        const amount = document.getElementById('tx-amount').value;
+        // Let's add a quick loading state to the button
+        const submitBtn = document.getElementById('btn-record');
+        const originalText = submitBtn.innerText;
+        submitBtn.innerText = 'RECORDING...';
+        submitBtn.disabled = true;
+
+        // 1. Grab all the values from your HTML inputs
+        const amountVal = parseFloat(document.getElementById('tx-amount').value);
         const name = document.getElementById('tx-name').value;
         const categoryId = document.getElementById('tx-category').value;
-        const description = document.getElementById('tx-desc').value;
+        const description = document.getElementById('tx-desc').value || null;
         
-        // Grab the new fields added to your HTML
-        const typeField = document.getElementById('tx-type');
-        const dateField = document.getElementById('tx-date');
-        
-        // Fallbacks just in case the HTML fields aren't found
-        const transactionType = typeField ? typeField.value : 'expense';
-        const transactionDate = (dateField && dateField.value) ? dateField.value : new Date().toISOString().split('T')[0];
+        // Date to TODAY, and type from the hidden input.
+        const transactionDate = new Date().toISOString().split('T')[0];
+        const transactionType = document.getElementById('tx-type').value;
 
-        // Validation: Ensure a category is selected
+        // 2. Validate
         if (!categoryId) {
             alert('Please select a category.');
+            submitBtn.innerText = originalText;
+            submitBtn.disabled = false;
             return;
         }
 
+        // 3. Package the data for the server
         const payload = {
-            user_id: CURRENT_USER_ID,
+            user_id: CURRENT_USER_ID, // Our secure, logged-in user ID!
             category_id: categoryId,
             transaction_type: transactionType, 
             name: name,
-            amount: parseFloat(amount),
+            amount: amountVal,
             transaction_date: transactionDate,
             description: description
         };
 
+        // 4. Send to the database
         try {
             const response = await fetch(`${API_URL}/transactions`, {
                 method: 'POST',
@@ -132,26 +154,33 @@ function setupFormHandler() {
             });
 
             if (response.ok) {
-                alert('Transaction logged successfully!');
+                // Success! Clear the form.
                 form.reset(); 
-                // Set category dropdown back to default state
                 document.getElementById('tx-category').value = ""; 
-                loadTransactions(); // Refresh the list automatically
+                
+                // If we are on the dashboard, instantly reload the transaction list
+                if (typeof loadTransactions === 'function') {
+                    loadTransactions(); 
+                }
             } else {
                 const errorData = await response.json();
-                alert(`Database Error: ${errorData.error}`);
+                alert(`Error saving to database: ${errorData.error}`);
             }
         } catch (error) {
             console.error('Failed to save transaction:', error);
             alert('Cannot reach the server.');
+        } finally {
+            // Restore the button
+            submitBtn.innerText = originalText;
+            submitBtn.disabled = false;
         }
     });
 }
 
-// 3. Render the Transaction List
+// Render the Transaction List
 async function loadTransactions() {
     try {
-        const response = await fetch(`${API_URL}/transactions`);
+        const response = await fetch(`${API_URL}/transactions?user_id=${CURRENT_USER_ID}`);
         const transactions = await response.json();
         
         // NOTE: Make sure you have a <div id="transaction-list"></div> in your HTML where you want these to show up!
@@ -195,5 +224,22 @@ async function loadTransactions() {
         }).join('');
     } catch (err) {
         console.error("Error loading transactions:", err);
+    }
+}
+
+// --- TOGGLE LOGIC ---
+function setTxType(type) {
+    const expenseBtn = document.getElementById('type-expense');
+    const incomeBtn = document.getElementById('type-income');
+    const typeInput = document.getElementById('tx-type');
+
+    typeInput.value = type;
+
+    if (type === 'expense') {
+        expenseBtn.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all bg-secondary text-on-secondary shadow-lg";
+        incomeBtn.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-on-surface-variant hover:text-on-surface";
+    } else {
+        incomeBtn.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all bg-primary text-on-primary shadow-lg";
+        expenseBtn.className = "flex-1 py-2 text-xs font-bold rounded-lg transition-all text-on-surface-variant hover:text-on-surface";
     }
 }
