@@ -395,29 +395,41 @@ function setTxType(type, isModal = false) {
 // ==========================================
 // --- 7. SPA ROUTER (Smooth Page Swapping) ---
 // ==========================================
+// ==========================================
+// --- 7. SPA ROUTER (Smooth Page Swapping) ---
+// ==========================================
 async function navigateTo(url) {
-    NProgress.start();
+    if (typeof NProgress !== 'undefined') NProgress.start();
 
     try {
         const response = await fetch(url);
+        if (!response.ok) throw new Error("Page not found");
+        
         const html = await response.text();
-
         const parser = new DOMParser();
         const newDoc = parser.parseFromString(html, 'text/html');
+        
+        // 1. Swap out the main content
         const newMain = newDoc.querySelector('main').innerHTML;
-
         document.querySelector('main').innerHTML = newMain;
+
+        // 2. Swap out the sidebar so links and active highlights refresh!
+        const newAside = newDoc.querySelector('aside').innerHTML;
+        document.querySelector('aside').innerHTML = newAside;
+
         window.history.pushState({}, '', url);
 
         initApp(); // Re-wire everything!
 
     } catch (error) {
         console.error("Navigation failed:", error);
+        // Fallback to a hard reload if the fetch fails
         window.location.href = url;
     }
 
-    NProgress.done();
+    if (typeof NProgress !== 'undefined') NProgress.done();
 }
+
 
 function setupNavigation() {
     document.querySelectorAll('aside nav a, aside .flex-1 a').forEach(link => {
