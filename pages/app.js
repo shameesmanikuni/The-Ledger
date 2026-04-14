@@ -39,11 +39,16 @@ function initApp() {
     if (!currentUser) return;
 
     // 1. Personalize Profile
-    document.querySelectorAll('.text-sm.font-bold.text-on-surface').forEach(nameEl => {
-        if (nameEl.innerText === 'Architect Prime') {
-            nameEl.innerText = currentUser.username;
-        }
-    });
+
+// We now target the specific class 'user-name-label' 
+// so font-size changes won't break the personalization.
+const profileNames = document.querySelectorAll('.user-name-label');
+profileNames.forEach(nameEl => {
+    // Check for both old and new default text to be safe
+    if (nameEl.innerText === 'Architect Prime' || nameEl.innerText === 'User') {
+        nameEl.innerText = currentUser.username;
+    }
+});
 
     // 2. Wire up Sign Out
     document.querySelectorAll('a:has(.material-symbols-outlined)').forEach(link => {
@@ -132,7 +137,7 @@ function setupFormHandler(formId) {
         e.preventDefault();
 
         const prefix = formId.includes('modal') ? 'modal-' : '';
-        const submitBtn = form.querySelector('button[type="submit"]');
+        const submitBtn = form.querySelector('button[type="submit"]') || document.querySelector(`button[form="${formId}"]`);
         const originalText = submitBtn.innerText;
 
         submitBtn.innerText = 'RECORDING...';
@@ -304,7 +309,7 @@ function updateDashboardStats(transactions) {
 
     const elHealth = document.getElementById('health-status');
     if (elHealth) {
-        elHealth.innerText = netBalance >= 0 ? "Optimized" : "Critical Risk";
+        elHealth.innerText = netBalance >= 0 ? "Optimized" : "Unhealthy";
         elHealth.className = netBalance >= 0 ? "text-primary font-bold" : "text-error font-bold animate-pulse";
     }
 
