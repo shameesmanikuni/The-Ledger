@@ -156,28 +156,25 @@
             class="fixed top-0 right-0 left-64 z-40 h-20 bg-[#0b1326] backdrop-blur-xl bg-opacity-90 flex justify-between items-center px-8 shadow-sm border-b border-white/5">
 
             <div>
-                <h2 class="text-3xl font-extrabold tracking-tight text-on-surface">Portfolio Overview</h2>
-                <p class="text-xs text-on-surface-variant mt-0.5">Financial structure health: <span id="health-status"
-                        class="text-primary font-bold">Optimized</span></p>
+                <h2 class="text-4xl font-extrabold tracking-tight text-on-surface">Portfolio Overview</h2>
             </div>
 
             <div class="flex items-center gap-4">
 
-                <div class="hidden md:flex items-center gap-2 mr-4">
-                    <button
-                        class="px-4 py-2 bg-surface-container-high text-xs font-bold rounded-lg hover:bg-surface-bright transition-colors text-on-surface">Last
-                        30 Days</button>
-                    <button
-                        class="px-4 py-2 bg-surface-container-high text-xs font-bold rounded-lg hover:bg-surface-bright transition-colors text-on-surface">Export
-                        .CSV</button>
+                <div
+                    class="hidden md:flex items-center gap-2 bg-surface-container-highest/40 px-3 py-1.5 rounded-lg border border-outline-variant/10 mr-2">
+                    <span class="text-xs uppercase tracking-widest font-bold text-on-surface-variant">Financial
+                        Health:</span>
+                    <span id="health-status" class="text-sm font-bold text-primary">Optimized</span>
                 </div>
 
-                <div class="h-8 w-[1px] bg-outline-variant/20"></div>
+                <div class="h-8 w-[1px] bg-outline-variant/20 hidden md:block"></div>
 
                 <button
                     class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#222a3d] transition-colors">
                     <span class="material-symbols-outlined text-on-surface-variant">settings</span>
                 </button>
+
                 <div class="h-8 w-[1px] bg-outline-variant/20 mx-2"></div>
                 <div class="flex items-center gap-3">
                     <span class="text-sm font-bold text-on-surface">Architect Prime</span>
