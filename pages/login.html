@@ -146,7 +146,7 @@
 
                 <div class="mt-12 text-center">
                     <p class="text-on-surface-variant text-sm">
-                        New user? <a class="text-primary font-bold hover:underline" href="#">Register</a>
+                        New user? <a class="text-primary font-bold hover:underline" href="./signup.html">Register</a>
                     </p>
                 </div>
             </div>
@@ -226,7 +226,7 @@
                         localStorage.setItem('ledger_user', JSON.stringify(data.user));
                         
                         // Redirect to dashboard
-                        window.location.href = 'index.html';
+                        window.location.href = '../index.html';
                     }
                 })
                 .catch(error => {

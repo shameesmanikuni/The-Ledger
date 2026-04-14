@@ -1,6 +1,18 @@
 const API_URL = 'http://localhost:3000/api';
-// Your SQL schema requires a user_id. We will hardcode ID 1 for now until you build a login system.
-const CURRENT_USER_ID = 1; 
+
+// --- AUTHENTICATION CHECK ---
+// 1. Grab the token and user data we saved during login
+const token = localStorage.getItem('ledger_token');
+const userString = localStorage.getItem('ledger_user');
+
+// 2. If they don't exist, the user isn't logged in. Kick them to the login page.
+if (!token || !userString) {
+    window.location.href = 'login.html';
+}
+
+// 3. If they are logged in, parse their real user data
+const currentUser = JSON.parse(userString);
+const CURRENT_USER_ID = currentUser.id; // <-- This replaces the hardcoded ID!
 
 document.addEventListener('DOMContentLoaded', () => {
     loadCategories();
