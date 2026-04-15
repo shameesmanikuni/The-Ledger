@@ -40,15 +40,15 @@ function initApp() {
 
     // 1. Personalize Profile
 
-// We now target the specific class 'user-name-label' 
-// so font-size changes won't break the personalization.
-const profileNames = document.querySelectorAll('.user-name-label');
-profileNames.forEach(nameEl => {
-    // Check for both old and new default text to be safe
-    if (nameEl.innerText === 'Architect Prime' || nameEl.innerText === 'User') {
-        nameEl.innerText = currentUser.username;
-    }
-});
+    // We now target the specific class 'user-name-label' 
+    // so font-size changes won't break the personalization.
+    const profileNames = document.querySelectorAll('.user-name-label');
+    profileNames.forEach(nameEl => {
+        // Check for both old and new default text to be safe
+        if (nameEl.innerText === 'Architect Prime' || nameEl.innerText === 'User') {
+            nameEl.innerText = currentUser.username;
+        }
+    });
 
     // 2. Wire up Sign Out
     document.querySelectorAll('a:has(.material-symbols-outlined)').forEach(link => {
@@ -80,6 +80,12 @@ profileNames.forEach(nameEl => {
 
     // Load the transactions (this also runs the dashboard math and renders the lists)
     loadTransactions();
+    // (Add this inside initApp)
+    // 5.5 Settings Page Setup
+    if (window.location.pathname.includes('settings.html')) {
+        loadSettings();
+        setupProfileForm();
+    }
 
     // 6. Initialize Search & Navigation
     setupSearch();
@@ -112,16 +118,16 @@ async function loadCategories(selectId, isFilter = false) {
     try {
         const response = await fetch(`${API_URL}/categories`);
         const categories = await response.json();
-        
+
         // If it's the filter, keep the "All Categories" option. Otherwise, make it a disabled placeholder.
-        categorySelect.innerHTML = isFilter 
-            ? '<option value="all" selected>All Categories</option>' 
+        categorySelect.innerHTML = isFilter
+            ? '<option value="all" selected>All Categories</option>'
             : '<option value="" disabled selected>Select a category</option>';
 
         categories.forEach(cat => {
             const option = document.createElement('option');
             option.value = cat.id;
-            option.textContent = cat.name; 
+            option.textContent = cat.name;
             categorySelect.appendChild(option);
         });
     } catch (error) {
@@ -404,11 +410,11 @@ async function navigateTo(url) {
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error("Page not found");
-        
+
         const html = await response.text();
         const parser = new DOMParser();
         const newDoc = parser.parseFromString(html, 'text/html');
-        
+
         // 1. Swap out the main content
         const newMain = newDoc.querySelector('main').innerHTML;
         document.querySelector('main').innerHTML = newMain;
@@ -492,11 +498,11 @@ function setupFilterHandler() {
             // We use transaction_date for accurate calendar filtering
             const txDate = new Date(t.transaction_date);
             if (startDate && txDate < new Date(startDate)) isMatch = false;
-            
+
             // For the end date, we add one day to include transactions made ON that day
             if (endDate) {
                 const end = new Date(endDate);
-                end.setDate(end.getDate() + 1); 
+                end.setDate(end.getDate() + 1);
                 if (txDate >= end) isMatch = false;
             }
 
@@ -513,5 +519,87 @@ function setupFilterHandler() {
         form.reset(); // Blanks out all the form inputs
         renderTransactionList(allTransactions); // Redraws everything
         closeFilterModal();
+    });
+}
+
+
+// ==========================================
+// --- SETTINGS & PROFILE LOGIC ---
+// ==========================================
+
+function loadSettings() {
+    // 1. Find the input boxes using their IDs
+    const nameInput = document.getElementById('profile-name');
+    const emailInput = document.getElementById('profile-email');
+
+    // 2. If the boxes exist, instantly fill them with the user's current info
+    if (nameInput && currentUser) {
+        nameInput.value = currentUser.username;
+    }
+
+    if (emailInput && currentUser) {
+        emailInput.value = currentUser.email;
+    }
+}
+
+function setupProfileForm() {
+    const form = document.getElementById('profile-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const btn = document.getElementById('btn-save-profile');
+        const originalText = btn.innerText;
+        btn.innerText = 'SAVING...';
+        btn.disabled = true;
+
+        const payload = {
+            username: document.getElementById('profile-name').value,
+            email: document.getElementById('profile-email').value,
+            currentPassword: document.getElementById('profile-current-password').value,
+            newPassword: document.getElementById('profile-new-password').value
+        };
+
+        // Minor validation
+        if ((payload.currentPassword && !payload.newPassword) || (!payload.currentPassword && payload.newPassword)) {
+            alert("To change your password, you must provide both your current and new password.");
+            btn.innerText = originalText;
+            btn.disabled = false;
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/users/${CURRENT_USER_ID}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert('Profile updated successfully!');
+
+                // Update LocalStorage so the top-right username changes immediately 
+                currentUser.username = payload.username;
+                currentUser.email = payload.email;
+                localStorage.setItem('ledger_user', JSON.stringify(currentUser));
+
+                // Update UI Names dynamically
+                document.querySelectorAll('.user-name-label').forEach(el => el.innerText = currentUser.username);
+
+                // Clear password fields for safety
+                document.getElementById('profile-current-password').value = '';
+                document.getElementById('profile-new-password').value = '';
+            } else {
+                alert(result.error || 'Failed to update profile');
+            }
+        } catch (error) {
+            alert('Cannot reach server');
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
     });
 }

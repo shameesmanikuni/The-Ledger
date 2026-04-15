@@ -87,6 +87,67 @@ app.post('/api/login', async (req, res) => {
 
 
 // ==========================================
+// --- USER PROFILE ROUTES ---
+// ==========================================
+
+// GET USER DETAILS
+app.get('/api/users/:id', async (req, res) => {
+    try {
+        const [users] = await pool.query('SELECT username, email FROM users WHERE id = ?', [req.params.id]);
+        if (users.length === 0) return res.status(404).json({ error: "User not found" });
+        res.json(users[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// UPDATE USER DETAILS (AND PASSWORD)
+app.put('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { username, email, currentPassword, newPassword } = req.body;
+
+    try {
+        // Fetch current user
+        const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
+        if (users.length === 0) return res.status(404).json({ error: "User not found" });
+
+        const user = users[0];
+
+        // If user is trying to update their password
+        if (currentPassword && newPassword) {
+            // Verify old password
+            const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+            if (!isMatch) {
+                return res.status(400).json({ error: "Incorrect current password" });
+            }
+
+            // Hash the new password
+            const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+            
+            // Update everything including password
+            await pool.query(
+                'UPDATE users SET username = ?, email = ?, password_hash = ? WHERE id = ?',
+                [username, email, hashedNewPassword, id]
+            );
+        } else {
+            // Just update username and email (no password change)
+            await pool.query(
+                'UPDATE users SET username = ?, email = ? WHERE id = ?',
+                [username, email, id]
+            );
+        }
+        res.json({ message: "Profile updated successfully!" });
+    } catch (err) {
+        // Handle unique constraint errors for email/username
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ error: "Username or email is already taken by another user." });
+        }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ==========================================
 // --- TRANSACTION & CATEGORY ROUTES ---
 // ==========================================
 
