@@ -239,18 +239,22 @@ function renderTransactionList(transactionsToRender) {
                         <p class="text-on-surface-variant text-sm">${t.category_name} ${descHtml} • ${formattedDate} at ${formattedTime}</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-4">
-                    <div class="text-right flex flex-col justify-center h-full">
+                
+                <div class="flex items-center">
+                    
+                    <div class="flex items-center gap-2 pr-8 opacity-0 -translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 pointer-events-none group-hover:pointer-events-auto">
+                        <button onclick="openEditModal(${t.id})" title="Edit" class="w-10 h-10 rounded-lg bg-surface-bright hover:bg-primary hover:text-on-primary text-on-surface-variant transition-all duration-200 flex items-center justify-center shadow-sm hover:scale-110">
+                            <span class="material-symbols-outlined text-[18px]">edit</span>
+                        </button>
+                        <button onclick="deleteTransaction(${t.id})" title="Delete" class="w-10 h-10 rounded-lg bg-surface-bright hover:bg-error hover:text-on-error text-on-surface-variant transition-all duration-200 flex items-center justify-center shadow-sm hover:scale-110">
+                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                    </div>
+
+                    <div class="text-right flex flex-col justify-center">
                         <p class="text-xl font-bold ${colorClass}">${sign}₹${formattedAmount}</p>
                     </div>
-                    <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center bg-surface-container-highest rounded-lg p-1 border border-outline-variant/20">
-                        <button onclick="openEditModal(${t.id})" title="Edit" class="p-1.5 rounded-md hover:bg-surface-bright text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center">
-                            <span class="material-symbols-outlined text-[20px]">edit</span>
-                        </button>
-                        <button onclick="deleteTransaction(${t.id})" title="Delete" class="p-1.5 rounded-md hover:bg-surface-bright text-on-surface-variant hover:text-error transition-colors flex items-center justify-center">
-                            <span class="material-symbols-outlined text-[20px]">delete</span>
-                        </button>
-                    </div>
+                    
                 </div>
             </div>
         `;
@@ -480,7 +484,7 @@ function setupFilterHandler() {
             if (categoryId !== 'all' && t.category_id != categoryId) isMatch = false;
             if (!isNaN(minAmount) && parseFloat(t.amount) < minAmount) isMatch = false;
             if (!isNaN(maxAmount) && parseFloat(t.amount) > maxAmount) isMatch = false;
-            
+
             const txDate = new Date(t.transaction_date);
             if (startDate && txDate < new Date(startDate)) isMatch = false;
             if (endDate) {
@@ -496,8 +500,8 @@ function setupFilterHandler() {
     });
 
     document.getElementById('btn-clear-filters')?.addEventListener('click', () => {
-        newForm.reset(); 
-        renderTransactionList(allTransactions); 
+        newForm.reset();
+        renderTransactionList(allTransactions);
         closeFilterModal();
     });
 }
@@ -558,7 +562,7 @@ function setupProfileForm() {
                 currentUser.email = payload.email;
                 localStorage.setItem('ledger_user', JSON.stringify(currentUser));
                 document.querySelectorAll('.user-name-label').forEach(el => el.innerText = currentUser.username);
-                
+
                 document.getElementById('profile-current-password').value = '';
                 document.getElementById('profile-new-password').value = '';
             } else {
@@ -575,7 +579,7 @@ function setupProfileForm() {
 
 function setupDeleteAccount() {
     const deleteBtn = document.getElementById('btn-delete-account');
-    
+
     // Debugging safety net
     if (!deleteBtn) {
         console.warn("Delete button not found! Make sure your button in settings.html has exactly id='btn-delete-account'");
@@ -597,7 +601,7 @@ function setupDeleteAccount() {
 
             if (response.ok) {
                 alert("Account deactivated.");
-                logoutUser(); 
+                logoutUser();
             } else {
                 const result = await response.json();
                 alert(result.error || "Failed to deactivate account");
@@ -614,8 +618,8 @@ function setupDeleteAccount() {
 // --- 8. EDIT & DELETE LOGIC ---
 // ==========================================
 
-function closeEditModal() { 
-    document.getElementById('edit-modal')?.classList.add('hidden'); 
+function closeEditModal() {
+    document.getElementById('edit-modal')?.classList.add('hidden');
 }
 
 function setEditTxType(type) {
@@ -636,7 +640,7 @@ function openEditModal(txId) {
     document.getElementById('edit-tx-name').value = tx.name;
     document.getElementById('edit-tx-category').value = tx.category_id;
     document.getElementById('edit-tx-desc').value = tx.description || '';
-    
+
     // 3. Set the type buttons
     setEditTxType(tx.transaction_type);
 
@@ -646,12 +650,12 @@ function openEditModal(txId) {
 
 async function deleteTransaction(txId) {
     if (!confirm("Are you sure you want to delete this transaction? This cannot be undone.")) return;
-    
+
     try {
         const response = await fetch(`${API_URL}/transactions/${txId}`, {
             method: 'DELETE'
         });
-        
+
         if (response.ok) {
             loadTransactions(); // Reload list
         } else {
